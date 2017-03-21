@@ -1,0 +1,9 @@
+E:\Projects\FTPServer\FTPServer\bin\Debug\FTPServer.exe.config
+E:\Projects\FTPServer\FTPServer\bin\Debug\FTPServer.exe
+E:\Projects\FTPServer\FTPServer\bin\Debug\FTPServer.pdb
+E:\Projects\FTPServer\FTPServer\obj\Debug\FTPServer.csprojResolveAssemblyReference.cache
+E:\Projects\FTPServer\FTPServer\obj\Debug\FTPServer.exe
+E:\Projects\FTPServer\FTPServer\obj\Debug\FTPServer.pdb
+E:\Projects\file-transfer-protocol\FTPServer\FTPServer\bin\Debug\FTPServer.exe.config
+E:\Projects\file-transfer-protocol\FTPServer\FTPServer\obj\Debug\FTPServer.exe
+E:\Projects\file-transfer-protocol\FTPServer\FTPServer\obj\Debug\FTPServer.pdb
