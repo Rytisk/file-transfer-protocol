@@ -12,8 +12,9 @@ namespace FTPServer
         {
             Server server = new Server();
 
-            while(true)
-                server.Start();
+            
+            server.Start();
+
         }
     }
 }

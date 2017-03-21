@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FTPServer
@@ -22,7 +23,8 @@ namespace FTPServer
         {
             listener = new TcpListener(IPAddress.Any, 21);
             listener.Start();
-            listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
+            //  listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
+            HandleAcceptTcpClient();
         }
 
         public void Stop()
@@ -33,10 +35,10 @@ namespace FTPServer
             }
         }
 
-        private void HandleAcceptTcpClient(IAsyncResult result)
+        private void HandleAcceptTcpClient()
         {
-            TcpClient client = listener.EndAcceptTcpClient(result);
-            listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
+            TcpClient client = listener.AcceptTcpClient();
+          //  listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
 
             NetworkStream stream = client.GetStream();
 
@@ -44,17 +46,9 @@ namespace FTPServer
             {
                 using (StreamReader reader = new StreamReader(stream, Encoding.ASCII))
                 {
-                    writer.WriteLine("220 Ready!");
-                    writer.Flush();
+                    ClientConnection clientConnection = new ClientConnection(client);
 
-                    string line = null;
-
-                    while(!string.IsNullOrEmpty(line = reader.ReadLine()))
-                    {
-                        Console.WriteLine(line);
-                        writer.WriteLine("502 I don't know");
-                        writer.Flush();
-                    }
+                    clientConnection.HandleClient();
                 }
             }
         }
