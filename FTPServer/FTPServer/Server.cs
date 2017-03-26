@@ -14,6 +14,8 @@ namespace FTPServer
     {
         private TcpListener listener;
 
+        public static ManualResetEvent tcpClientConnected = new ManualResetEvent(false);
+
         public Server()
         {
             
@@ -21,12 +23,17 @@ namespace FTPServer
 
         public void Start()
         {
+            tcpClientConnected.Reset();
+
+            Console.WriteLine("Waiting for a connection...");
+
             listener = new TcpListener(IPAddress.Any, 21);
             listener.Start();
-            listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
+            listener.BeginAcceptTcpClient(new AsyncCallback(HandleAcceptTcpClient), listener);
 
-            Console.ReadLine();
-            //HandleAcceptTcpClient();
+            tcpClientConnected.WaitOne();
+            // Console.ReadLine();
+            //   HandleAcceptTcpClient();
         }
 
         public void Stop()
@@ -39,10 +46,13 @@ namespace FTPServer
 
         private void HandleAcceptTcpClient(IAsyncResult result)
         {
-            Console.WriteLine("WTF");
-            // TcpClient client = listener.AcceptTcpClient();
+
+            
+            // Console.WriteLine("WTF");
+            //TcpClient client = listener.AcceptTcpClient();
             TcpClient client = listener.EndAcceptTcpClient(result);
-          
+
+            listener.BeginAcceptTcpClient(new AsyncCallback(HandleAcceptTcpClient), listener);
 
             NetworkStream stream = client.GetStream();
 
@@ -55,6 +65,7 @@ namespace FTPServer
                     clientConnection.HandleClient();
                 }
             }
+            tcpClientConnected.Set();
         }
 
 

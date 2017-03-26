@@ -160,18 +160,18 @@ namespace FTPServer
 
             if(pathname != null)
             {
-                _passiveListener.BeginAcceptTcpClient(HandleList, pathname);
+                _dataClient = _passiveListener.AcceptTcpClient();
+                HandleList(pathname);
+
                 return string.Format("150 Opening mode data transfer for LIST");
             }
 
             return "450 Requested file action not taken";
         }
 
-        private void HandleList(IAsyncResult result)
+        private void HandleList(string pathname)
         {
-            string pathname = (string)result.AsyncState;
 
-            _dataClient = _passiveListener.EndAcceptTcpClient(result);
 
             using (NetworkStream stream = _dataClient.GetStream())
             {
@@ -323,7 +323,7 @@ namespace FTPServer
 
             if (true)
             {
-                _root = "C:\\Users\\Rytis\\Desktop";
+                _root = "C:\\";
                 _currentDirectory = _root;
                 return "230 User logged in";
             }
