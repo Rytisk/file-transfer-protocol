@@ -12,11 +12,15 @@ namespace FTPServer
     class ClientConnection
     {
         private TcpClient _client;
+        private TcpClient _dataClient;
         private TcpListener _passiveListener;
 
         private NetworkStream _networkStream;
         private StreamReader _reader;
         private StreamWriter _writer;
+
+        private StreamReader _dataReader;
+        private StreamWriter _dataWriter;
        
 
         private IPEndPoint _dataEndpoint;
@@ -24,6 +28,8 @@ namespace FTPServer
         private string _username;
         private string _password;
         private string _transferType;
+        private string _currentDirectory;
+        private string _root;
 
         public ClientConnection(TcpClient client)
         {
@@ -41,8 +47,11 @@ namespace FTPServer
 
             string line = null;
 
+            Console.WriteLine("starting the server");
+
             while (!string.IsNullOrEmpty(line = _reader.ReadLine()))
             {
+                Console.WriteLine(line);
                 string response = null;
 
                 string[] command = line.Split(' ');
@@ -92,6 +101,9 @@ namespace FTPServer
                     case "PASV":
                         response = Passive();
                         break;
+                    case "LIST":
+                        response = List(argument);
+                        break;
                     default:
                         response = "502 Command not implemented";
                         break;
@@ -113,6 +125,101 @@ namespace FTPServer
                 }
             }
         }
+
+        private string NormalizeFilename(string path)
+        {
+            if (path == null)
+            {
+                path = string.Empty;
+            }
+
+            if (path == "/")
+            {
+                return _root;
+            }
+            else if (path.StartsWith("/"))
+            {
+                path = new FileInfo(Path.Combine(_root, path.Substring(1))).FullName;
+            }
+            else
+            {
+                path = new FileInfo(Path.Combine(_currentDirectory, path)).FullName;
+            }
+
+            return IsPathValid(path) ? path : null;
+        }
+
+        private bool IsPathValid(string path)
+        {
+            return path.StartsWith(_root);
+        }
+
+        private string List(string pathname)
+        {
+            pathname = NormalizeFilename(pathname);
+
+            if(pathname != null)
+            {
+                _passiveListener.BeginAcceptTcpClient(HandleList, pathname);
+                return string.Format("150 Opening mode data transfer for LIST");
+            }
+
+            return "450 Requested file action not taken";
+        }
+
+        private void HandleList(IAsyncResult result)
+        {
+            string pathname = (string)result.AsyncState;
+
+            _dataClient = _passiveListener.EndAcceptTcpClient(result);
+
+            using (NetworkStream stream = _dataClient.GetStream())
+            {
+                _dataReader = new StreamReader(stream, Encoding.ASCII);
+                _dataWriter = new StreamWriter(stream, Encoding.ASCII);
+
+                IEnumerable<string> directories = Directory.EnumerateDirectories(pathname);
+
+                foreach (string dir in directories)
+                {
+                    DirectoryInfo d = new DirectoryInfo(dir);
+
+                    string date = d.LastWriteTime < DateTime.Now - TimeSpan.FromDays(180) ?
+                    d.LastWriteTime.ToString("MMM dd yyyy") :
+                    d.LastWriteTime.ToString("MMM dd HH:mm");
+
+                    string line = string.Format("drwxr-xr-x 2 2003 2003 {0,8} {1} {2}", "4096", date, d.Name);
+          
+                    _dataWriter.WriteLine(line);
+                    _dataWriter.Flush();
+                }
+
+
+                IEnumerable<string> files = Directory.EnumerateFiles(pathname);
+
+                foreach (string file in files)
+                {
+                    FileInfo f = new FileInfo(file);
+
+                    string date = f.LastWriteTime < DateTime.Now - TimeSpan.FromDays(180) ?
+                        f.LastWriteTime.ToString("MMM dd  yyyy") :
+                        f.LastWriteTime.ToString("MMM dd HH:mm");
+
+                    string line = string.Format("-rw-r--r--    2 2003     2003     {0,8} {1} {2}", f.Length, date, f.Name);
+             
+
+                    _dataWriter.WriteLine(line);
+                    _dataWriter.Flush();
+                }
+            }
+
+            _dataClient.Close();
+            _dataClient = null;
+
+            _writer.WriteLine("226 Transfer complete");
+            _writer.Flush();
+        }
+
 
         private string Type(string typeCode, string formatControl)
         {
@@ -216,6 +323,8 @@ namespace FTPServer
 
             if (true)
             {
+                _root = "C:\\Users\\Rytis\\Desktop";
+                _currentDirectory = _root;
                 return "230 User logged in";
             }
             else
@@ -226,6 +335,42 @@ namespace FTPServer
 
         private string ChangeWorkingDirectory(string pathname)
         {
+            if (pathname == "/")
+            {
+                _currentDirectory = _root;
+            }
+            else
+            {
+                string newDir;
+
+                if (pathname.StartsWith("/"))
+                {
+                    pathname = pathname.Substring(1).Replace('/', '\\');
+                    newDir = Path.Combine(_root, pathname);
+                }
+                else
+                {
+                    pathname = pathname.Replace('/', '\\');
+                    newDir = Path.Combine(_currentDirectory, pathname);
+                }
+
+                if (Directory.Exists(newDir))
+                {
+                    _currentDirectory = new DirectoryInfo(newDir).FullName;
+
+                    if (!IsPathValid(_currentDirectory))
+                    {
+                        _currentDirectory = _root;
+                    }
+                }
+                else
+                {
+                    _currentDirectory = _root;
+                }
+            }
+
+
+
             return "250 Changed to new directory";
         }
     }

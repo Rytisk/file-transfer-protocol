@@ -23,8 +23,10 @@ namespace FTPServer
         {
             listener = new TcpListener(IPAddress.Any, 21);
             listener.Start();
-            //  listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
-            HandleAcceptTcpClient();
+            listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
+
+            Console.ReadLine();
+            //HandleAcceptTcpClient();
         }
 
         public void Stop()
@@ -35,10 +37,12 @@ namespace FTPServer
             }
         }
 
-        private void HandleAcceptTcpClient()
+        private void HandleAcceptTcpClient(IAsyncResult result)
         {
-            TcpClient client = listener.AcceptTcpClient();
-          //  listener.BeginAcceptTcpClient(HandleAcceptTcpClient, listener);
+            Console.WriteLine("WTF");
+            // TcpClient client = listener.AcceptTcpClient();
+            TcpClient client = listener.EndAcceptTcpClient(result);
+          
 
             NetworkStream stream = client.GetStream();
 
