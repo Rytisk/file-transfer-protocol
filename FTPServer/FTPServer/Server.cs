@@ -32,8 +32,6 @@ namespace FTPServer
             listener.BeginAcceptTcpClient(new AsyncCallback(HandleAcceptTcpClient), listener);
 
             tcpClientConnected.WaitOne();
-            // Console.ReadLine();
-            //   HandleAcceptTcpClient();
         }
 
         public void Stop()
@@ -46,10 +44,6 @@ namespace FTPServer
 
         private void HandleAcceptTcpClient(IAsyncResult result)
         {
-
-            
-            // Console.WriteLine("WTF");
-            //TcpClient client = listener.AcceptTcpClient();
             TcpClient client = listener.EndAcceptTcpClient(result);
 
             listener.BeginAcceptTcpClient(new AsyncCallback(HandleAcceptTcpClient), listener);

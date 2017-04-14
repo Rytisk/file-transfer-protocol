@@ -104,6 +104,9 @@ namespace FTPServer
                     case "LIST":
                         response = List(argument);
                         break;
+                    case "RETR":
+                        response = Retrieve(argument);
+                        break;
                     default:
                         response = "502 Command not implemented";
                         break;
@@ -220,6 +223,83 @@ namespace FTPServer
             _writer.Flush();
         }
 
+        private string Retrieve(string pathname)
+        {
+            pathname = NormalizeFilename(pathname);
+
+            if(IsPathValid(pathname))
+            {
+                if(File.Exists(pathname))
+                {
+                    _dataClient = _passiveListener.AcceptTcpClient();
+
+                    using (NetworkStream dataStream = _dataClient.GetStream())
+                    {
+                        using (FileStream fs = new FileStream(pathname, FileMode.Open, FileAccess.Read))
+                        {
+                            CopyStream(fs, dataStream);
+                        }
+                    }
+                    _dataClient.Close();
+                    _dataClient = null;
+
+                    _writer.WriteLine("226 Closing data connection, file transfer succesful");
+                    _writer.Flush();
+
+                    return "150 Opening passive mode data transfer for RETR";
+                }
+            }
+
+            return "550 File Not Found";
+        }
+
+        private long CopyStream(Stream input, Stream output)
+        {
+            if (_transferType == "I")
+            {
+                return CopyStream(input, output, 4096);
+            }
+            else
+            {
+                return CopyStreamAscii(input, output, 4096);
+            }
+        }
+
+        private static long CopyStream(Stream input, Stream output, int bufferSize)
+        {
+            byte[] buffer = new byte[bufferSize];
+            int count = 0;
+            long total = 0;
+
+            while ((count = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                output.Write(buffer, 0, count);
+                total += count;
+            }
+
+            return total;
+        }
+
+        private static long CopyStreamAscii(Stream input, Stream output, int bufferSize)
+        {
+            char[] buffer = new char[bufferSize];
+            int count = 0;
+            long total = 0;
+
+            using (StreamReader rdr = new StreamReader(input))
+            {
+                using (StreamWriter wtr = new StreamWriter(output, Encoding.ASCII))
+                {
+                    while ((count = rdr.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        wtr.Write(buffer, 0, count);
+                        total += count;
+                    }
+                }
+            }
+
+            return total;
+        }
 
         private string Type(string typeCode, string formatControl)
         {
